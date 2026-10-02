@@ -48,6 +48,11 @@ public class TerminalAccessory: UIInputView, UIInputViewAudioFeedback {
             setupUI ()
         }
     }
+
+    public override func safeAreaInsetsDidChange() {
+        super.safeAreaInsetsDidChange()
+        setupUI()
+    }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -195,6 +200,7 @@ public class TerminalAccessory: UIInputView, UIInputViewAudioFeedback {
         floatViews = []
         terminalView?.setupKeyboardButtonColors ()
         let useSmall = self._useSmall
+        let availableWidth = self.availableWidth
         if useSmall {
             leftViews.append(makeButton("", #selector(esc), icon: "escape", isNormal: false))
             let controlButton = makeButton("", #selector(ctrl), icon: "control", isNormal: false)
@@ -209,6 +215,7 @@ public class TerminalAccessory: UIInputView, UIInputViewAudioFeedback {
             leftViews.append(makeButton("", #selector(tab), icon: "arrow.right.to.line.compact", isNormal: false))
             //leftViews.append(makeButton ("tab", #selector(tab)))
         }
+        controlButton?.isSelected = controlModifier
         rightViews.append(makeAutoRepeatButton ("arrow.left", #selector(left)))
         rightViews.append(makeAutoRepeatButton ("arrow.down", #selector(down)))
         rightViews.append(makeAutoRepeatButton ("arrow.up", #selector(up)))
@@ -223,7 +230,7 @@ public class TerminalAccessory: UIInputView, UIInputViewAudioFeedback {
         let minWidth: CGFloat = useSmall ? 20.0 : (UIDevice.current.userInterfaceIdiom == .phone) ? 22 : 32
         let maxFuncKeyWidth = (minWidth + buttonPad) * 10
         let importantKeysCount: Double = useSmall ? 11 : 13
-        let maxSpaceForImportantKeys = frame.width - maxFuncKeyWidth - buttonPad
+        let maxSpaceForImportantKeys = availableWidth - maxFuncKeyWidth - buttonPad
         var aditionalSpaceForImportantKeys: CGFloat = 0
         if maxSpaceForImportantKeys > 0 {
             aditionalSpaceForImportantKeys =  maxSpaceForImportantKeys / importantKeysCount
@@ -268,10 +275,10 @@ public class TerminalAccessory: UIInputView, UIInputViewAudioFeedback {
         let usedSpace = (floatViews).reduce(fixedUsedSpace) { $0 + $1.frame.width + buttonPad }
         var additionalUsedSpaceToAdd = 0.0
         
-        if UIDevice.current.userInterfaceIdiom == .phone && frame.width > 500 {
+        if UIDevice.current.userInterfaceIdiom == .phone && availableWidth > 500 {
             additionalUsedSpaceToAdd = 50.0
         }
-        var left = frame.width - usedSpace - additionalUsedSpaceToAdd
+        var left = availableWidth - usedSpace - additionalUsedSpaceToAdd
         func addOptional (_ text: String, _ selector: Selector) {
             left -= minWidth + buttonPad
             
@@ -311,15 +318,19 @@ return
         setupUI()
     }
 
+    var availableWidth: CGFloat {
+        max(0, bounds.width-safeAreaInsets.left-safeAreaInsets.right)
+    }
+
     var _useSmall: Bool {
         get {
-            frame.width < 380
+            availableWidth < 380
         }
     }
     
     var buttonPad = 4.0
     public override func layoutSubviews() {
-        var x: CGFloat = 2
+        var x: CGFloat = bounds.minX + safeAreaInsets.left + 2
         let dh = views.reduce (0) { max ($0, $1.frame.size.height )}
         
         for view in leftViews + floatViews {
@@ -328,7 +339,7 @@ return
             x += size.width + buttonPad
         }
         
-        var right = frame.width - 2
+        var right = bounds.maxX - safeAreaInsets.right - 2
         for view in rightViews.reversed() {
             let size = view.frame.size
             view.frame = CGRect (x: right-size.width, y: 4, width: size.width, height: dh)
